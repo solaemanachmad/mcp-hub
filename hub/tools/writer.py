@@ -62,3 +62,23 @@ def register(mcp: FastMCP) -> None:
             fmt=fmt,
             caption=caption,
         )
+
+    @mcp.tool()
+    async def latex_manuscript(
+        project: str,
+        template: str = "ieee",
+        title: str = "",
+        authors: str = "Author Name",
+    ) -> dict[str, Any]:
+        """Generate a complete LaTeX paper skeleton ('ieee', 'springer', 'elsevier') pre-filled with your Literature Review Matrix, Experiment Results Table, and BibTeX."""
+        return await writer_svc.build_latex_manuscript(
+            project=project,
+            template=template,
+            title=title,
+            authors=authors,
+        )
+
+    @mcp.tool()
+    async def latex_check(tex_source: str) -> dict[str, Any]:
+        """Validate LaTeX code for unclosed environments (\\begin/\\end) and unbalanced braces."""
+        return writer_svc.check_latex(tex_source)

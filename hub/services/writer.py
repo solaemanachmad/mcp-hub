@@ -164,3 +164,108 @@ async def build_exp_table(
         "metrics": cols,
         "table": table,
     }
+
+
+def check_latex(tex_source: str) -> dict[str, Any]:
+    """Lint LaTeX source for unmatched environments, braces, and common table issues."""
+    issues: list[str] = []
+    begins = re.findall(r"\\begin\{([^}]+)\}", tex_source)
+    ends = re.findall(r"\\end\{([^}]+)\}", tex_source)
+
+    if len(begins) != len(ends):
+        issues.append(f"Mismatched environment count: {len(begins)} \\begin vs {len(ends)} \\end.")
+
+    stack: list[str] = []
+    for match in re.finditer(r"\\(begin|end)\{([^}]+)\}", tex_source):
+        kind, env = match.group(1), match.group(2)
+        if kind == "begin":
+            stack.append(env)
+        else:
+            if not stack or stack[-1] != env:
+                issues.append(f"Unexpected \\end{{{env}}} (open stack: {stack}).")
+            else:
+                stack.pop()
+    if stack:
+        issues.append(f"Unclosed environments: {stack}.")
+
+    open_braces = tex_source.count("{") - tex_source.count(r"\{")
+    close_braces = tex_source.count("}") - tex_source.count(r"\}")
+    if open_braces != close_braces:
+        issues.append(f"Unbalanced curly braces: {open_braces} '{{' vs {close_braces} '}}'.")
+
+    return {
+        "valid": len(issues) == 0,
+        "issue_count": len(issues),
+        "issues": issues,
+    }
+
+
+async def build_latex_manuscript(
+    project: str,
+    template: str = "ieee",
+    title: str = "",
+    authors: str = "Author Name",
+    database: Database | None = None,
+) -> dict[str, Any]:
+    """Generate a complete, ready-to-compile LaTeX paper skeleton (IEEE, Springer, Elsevier) with tables & BibTeX."""
+    repo = database or default_db
+    proj = await repo.ensure_project(project)
+    matrix = await build_paper_matrix(proj["slug"], fmt="latex", database=repo)
+    exp_tbl = await build_exp_table(proj["slug"], fmt="latex", database=repo)
+    bib = await export_bibtex(proj["slug"], database=repo)
+
+    tpl = template.strip().lower()
+    if tpl == "springer":
+        doc_class = r"\documentclass[runningheads]{llncs}"
+    elif tpl == "elsevier":
+        doc_class = r"\documentclass[preprint,12pt]{elsarticle}"
+    else:
+        doc_class = r"\documentclass[conference]{IEEEtran}"
+
+    paper_title = _escape_latex(title or proj["name"])
+    tex = "\n".join(
+        [
+            doc_class,
+            r"\usepackage{booktabs}",
+            r"\usepackage{graphicx}",
+            r"\usepackage{amsmath,amssymb}",
+            r"\usepackage{hyperref}",
+            "",
+            f"\\title{{{paper_title}}}",
+            f"\\author{{{_escape_latex(authors)}}}",
+            "",
+            r"\begin{document}",
+            r"\maketitle",
+            "",
+            r"\begin{abstract}",
+            _escape_latex(proj.get("description") or "Abstract placeholder."),
+            r"\end{abstract}",
+            "",
+            r"\section{Introduction}",
+            "Introduction and research motivation.",
+            "",
+            r"\section{Related Work}",
+            matrix["table"],
+            "",
+            r"\section{Proposed Methodology}",
+            "Architecture and mathematical formulation.",
+            "",
+            r"\section{Experimental Setup and Results}",
+            exp_tbl["table"],
+            "",
+            r"\section{Conclusion}",
+            "Summary of findings and future work.",
+            "",
+            r"\bibliographystyle{IEEEtran}",
+            r"\bibliography{references}",
+            r"\end{document}",
+        ]
+    )
+
+    return {
+        "project": proj["slug"],
+        "template": tpl,
+        "tex": tex,
+        "bibtex": bib["bibtex"],
+        "lint": check_latex(tex),
+    }
