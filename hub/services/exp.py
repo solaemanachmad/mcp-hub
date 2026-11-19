@@ -12,20 +12,18 @@ def route_node(
     config: dict[str, Any] | None = None,
     dataset_location: str = "",
 ) -> str:
-    """Resolve 'auto' routing based on dataset location and workload hints in config."""
+    """Resolve 'auto' routing between Kaggle GPU and Office PC based on dataset & workload."""
     clean = (target_node or "auto").strip().lower()
-    if clean in ("pc", "mac", "kaggle"):
+    if clean in ("pc", "kaggle"):
         return clean
 
-    # If the linked dataset lives on Kaggle, default auto-execution to Kaggle GPU!
+    # If the linked dataset lives on Kaggle, default auto-execution to Kaggle GPU
     if dataset_location.strip().lower() == "kaggle":
         return "kaggle"
 
     cfg = config or {}
     if cfg.get("gpu") or cfg.get("epochs", 0) >= 20 or cfg.get("accelerator") == "gpu":
         return "kaggle"
-    if cfg.get("task") in ("pdf", "embed", "summarize", "llm"):
-        return "mac"
     return "pc"
 
 

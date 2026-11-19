@@ -1,13 +1,13 @@
 # MCP Tools & REST API Reference
 
-## MCP Tools (`/mcp`) — 26 Tools Across 8 Domains
+## MCP Tools (`/mcp`) — 27 Tools + 3 Prompts Across 9 Modules
 
 ### 1. Research & Cross-Project RAG (`hub/tools/research.py`)
 | Tool | Purpose |
 |---|---|
 | `search_papers(query, limit=5, source="all")` | Search Semantic Scholar and arXiv with automatic fallback |
 | `lookup_doi(doi)` | Retrieve verified CrossRef metadata for a DOI |
-| `ingest_pdf(project, title, pdf_url_or_key, doi="", authors="", year=None, method="", dataset_used="", key_metrics="", limitations="")` | Store PDF, extract chunks + Qwen summary + embeddings on Mac mini M4, save to `pgvector` |
+| `ingest_pdf(project, title, pdf_url_or_key, doi="", authors="", year=None, method="", dataset_used="", key_metrics="", limitations="")` | Extract PDF chunks directly on Oracle Cloud, generate API summary + embeddings, and store in `pgvector` |
 | `search_kb(query, project="all", category="", top_k=5)` | Semantic RAG search within one project, across a project category, or across `'all'` projects |
 
 ### 2. Multi-Project Categorization & Shared Memory (`hub/tools/memory.py`)
@@ -21,8 +21,8 @@
 ### 3. Dataset Registry & Kaggle Dataset Linking (`hub/tools/dataset.py`)
 | Tool | Purpose |
 |---|---|
-| `register_dataset(slug, project, name, location="kaggle", kaggle_ref="", mount_path="", fmt="csv", num_samples=0, num_classes=0, size_mb=0.0, description="")` | Register a dataset stored on Kaggle (`kaggle_ref="user/dataset"` auto-mounts at `/kaggle/input/...`), PC, Mac, or Oracle |
-| `list_datasets(project="", location="")` | List registered datasets filtered by project and/or location (`kaggle`, `pc`, `mac`) |
+| `register_dataset(slug, project, name, location="kaggle", kaggle_ref="", mount_path="", fmt="csv", num_samples=0, num_classes=0, size_mb=0.0, description="")` | Register a dataset stored on Kaggle (`kaggle_ref="user/dataset"` auto-mounts at `/kaggle/input/...`), PC, or Oracle |
+| `list_datasets(project="", location="")` | List registered datasets filtered by project and/or location (`kaggle`, `pc`) |
 | `get_dataset(slug)` | Retrieve full dataset metadata, Kaggle ref, and mount path |
 
 ### 4. Academic Writer & Literature Review Matrix (`hub/tools/writer.py`)
@@ -33,17 +33,17 @@
 | `export_bibtex(project)` | Export standard `.bib` citations for all papers in a project |
 | `exp_table(project, metrics=None, fmt="latex", caption="...")` | Generate a publication-ready LaTeX (`booktabs`) or Markdown table of experiment results |
 
-### 5. Local AI Delegation (`hub/tools/local.py` — Mac mini M4, Zero Cloud Tokens)
+### 5. Cloud AI Helper API (`hub/tools/ai.py`)
 | Tool | Purpose |
 |---|---|
-| `ask_local(prompt, system="", model="")` | Run local Ollama LLM (`qwen2.5:7b` default) on Mac mini M4 |
-| `summarize_local(text, focus="...", max_words=200)` | Compress long logs/papers via local Qwen before cloud AI reasoning |
-| `mac_status()` | Check Mac mini health and available Ollama models |
+| `ask_ai(prompt, system="", model="")` | Run a prompt on Oracle Cloud's configured low-cost AI API (Gemini Flash, Qwen, GPT-4o-mini, DeepSeek) |
+| `summarize_text(text, focus="...", max_words=200)` | Compress long logs/papers on the server before feeding into your primary AI client |
+| `ai_status()` | Check configured AI API provider, chat model, and embedding model |
 
 ### 6. Experiment Orchestrator (`hub/tools/exp.py`)
 | Tool | Purpose |
 |---|---|
-| `list_nodes()` | List compute nodes (`mac`, `pc`, `kaggle`) and live online/offline status |
+| `list_nodes()` | List compute nodes (`pc`, `kaggle`) and live online/offline status |
 | `submit_exp(project, name, target_node="auto", dataset_slug="", kaggle_datasets=None, script="", config={}, created_by="ai")` | Queue an experiment (`auto` routes Kaggle-stored datasets & GPU runs directly to `kaggle` and injects `dataset_path`) |
 | `exp_status(exp_id)` | Check experiment status, linked dataset, and recent log tail |
 | `exp_result(exp_id)` | Retrieve full config, metrics, logs, and artifact link |
@@ -62,19 +62,10 @@
 |---|---|
 | `send_alert(title, message)` | Send an instant notification to Telegram or Discord/Slack webhook (also triggers automatically when any experiment finishes) |
 
----
-
-## Orchestrator REST API (`/api`)
-
-All `/api/*` endpoints require `Authorization: Bearer <WORKER_TOKEN>` (or `<HUB_TOKEN>`).
-
-| Method & Path | Description |
+### 9. Reusable Prompts & Backup (`hub/tools/prompts.py`)
+| Item | Purpose |
 |---|---|
-| `GET /health` | Public liveness check |
-| `POST /api/nodes/heartbeat` | Register/update compute worker heartbeat |
-| `GET /api/nodes` | List registered compute nodes |
-| `POST /api/jobs` | Queue a new experiment |
-| `POST /api/jobs/claim` | Atomically claim next queued job for a node |
-| `GET /api/jobs/{exp_id}` | Fetch experiment config & status (Kaggle pull mode) |
-| `POST /api/jobs/{exp_id}/complete` | Submit experiment status, metrics, logs, and artifact URL + fire Telegram/Webhook alert |
-| `POST /api/files/upload` | Upload PDF/file into configured local or Oracle S3 storage |
+| `backup_project(project)` | Export a complete portable JSON snapshot of a project |
+| Prompt `lit_review` | 1-click workflow template for literature review |
+| Prompt `plan_exp` | 1-click workflow template for designing a Kaggle/PC experiment |
+| Prompt `ai_handoff` | 1-click workflow template for saving session state before switching AI clients |

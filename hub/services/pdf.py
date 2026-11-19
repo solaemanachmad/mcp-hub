@@ -1,4 +1,4 @@
-"""PDF text extraction and overlapping sentence-friendly chunking."""
+"""Built-in PDF text extraction and overlapping sentence-aware chunking on Oracle Cloud."""
 
 from __future__ import annotations
 
@@ -28,7 +28,6 @@ def chunk_text(text: str, chunk_size: int = 1200, overlap: int = 180) -> list[st
     while start < total:
         end = min(total, start + chunk_size)
         if end < total:
-            # Prefer breaking on a sentence or word boundary
             split_at = clean.rfind(". ", start + chunk_size // 2, end)
             if split_at == -1:
                 split_at = clean.rfind(" ", start + chunk_size // 2, end)

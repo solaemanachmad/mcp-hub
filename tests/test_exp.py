@@ -18,14 +18,12 @@ class FakeDB:
 class TestExp(unittest.TestCase):
     def test_route_node_explicit(self):
         self.assertEqual(route_node("pc"), "pc")
-        self.assertEqual(route_node("mac"), "mac")
         self.assertEqual(route_node("kaggle"), "kaggle")
 
     def test_route_node_auto_and_kaggle_dataset(self):
         self.assertEqual(route_node("auto", {}, dataset_location="kaggle"), "kaggle")
         self.assertEqual(route_node("auto", {"gpu": True}), "kaggle")
         self.assertEqual(route_node("auto", {"epochs": 30}), "kaggle")
-        self.assertEqual(route_node("auto", {"task": "embed"}), "mac")
         self.assertEqual(route_node("auto", {"epochs": 5}), "pc")
 
     def test_compare_experiments_ranks_descending(self):

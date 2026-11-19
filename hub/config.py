@@ -33,9 +33,12 @@ class Settings(BaseSettings):
     s3_access_key: str = ""
     s3_secret_key: str = ""
 
-    # Mac mini M4 Local AI service (Tailscale IP/MagicDNS)
-    mac_url: str = "http://mac-mini:8100"
-    mac_timeout: int = 120
+    # Cloud AI & Embedding API (OpenAI-compatible: Gemini, OpenAI, Qwen/DashScope, DeepSeek, OpenRouter)
+    ai_base_url: str = "https://api.openai.com/v1"
+    ai_api_key: str = ""
+    ai_model: str = "gpt-4o-mini"
+    embed_model: str = "text-embedding-3-small"
+    ai_timeout: int = 90
 
     # Research APIs
     semantic_scholar_key: str = ""

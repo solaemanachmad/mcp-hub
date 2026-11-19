@@ -1,8 +1,8 @@
-"""Tests for Mac mini PDF text chunking."""
+"""Tests for built-in PDF text chunking."""
 
 import unittest
 
-from mac.pdf import chunk_text
+from hub.services.pdf import chunk_text
 
 
 class TestPdf(unittest.TestCase):

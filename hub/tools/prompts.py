@@ -19,7 +19,7 @@ def register(mcp: FastMCP) -> None:
             f"We are working on project '{project}' focusing on '{topic}'.\n"
             f"1. Call `get_context(project='{project}')` to check existing papers and notes.\n"
             f"2. Call `search_kb(project='{project}', query='{topic}')` and `search_papers(query='{topic}')`.\n"
-            f"3. For new papers, summarize via Mac mini (`summarize_local`) and update `paper_matrix(project='{project}')`.\n"
+            f"3. For new papers, summarize via `summarize_text` and update `paper_matrix(project='{project}')`.\n"
             f"4. Conclude by saving key findings with `save_note(project='{project}', ...)`."
         )
 
