@@ -6,8 +6,11 @@ import importlib
 import pkgutil
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 
 import hub.tools
+
+LOADED_PLUGINS: list[str] = []
 
 
 def load_plugins(mcp: FastMCP) -> list[str]:
@@ -24,16 +27,17 @@ def load_plugins(mcp: FastMCP) -> list[str]:
     return loaded
 
 
-LOADED_PLUGINS: list[str] = []
-
-
 def build_mcp() -> FastMCP:
     """Create and configure the unified stateless Streamable HTTP MCP server."""
+    # Disable Host-header DNS rebinding check because external clients connect via
+    # Tailscale Funnel / custom domains and are authenticated by TokenMiddleware.
+    security = TransportSecuritySettings(enable_dns_rebinding_protection=False)
     mcp = FastMCP(
         name="mcp-hub",
         stateless_http=True,
         json_response=True,
         streamable_http_path="/mcp",
+        transport_security=security,
     )
     LOADED_PLUGINS.clear()
     LOADED_PLUGINS.extend(load_plugins(mcp))
