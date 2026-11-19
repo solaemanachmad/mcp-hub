@@ -17,7 +17,18 @@ CREATE TABLE IF NOT EXISTS projects (
 
 CREATE INDEX IF NOT EXISTS idx_projects_cat_status ON projects(category, status);
 
--- Shared cross-AI memory notes (Claude, Antigravity, ChatGPT, Qwen, CodeBuddy, etc.)
+-- Dynamic Multi-LLM Provider Registry (Qwen, DeepSeek, Baidu, Weixin/Hunyuan, Gemini, OpenAI, OpenRouter, etc.)
+CREATE TABLE IF NOT EXISTS llm_providers (
+    name TEXT PRIMARY KEY,
+    base_url TEXT NOT NULL,
+    default_model TEXT NOT NULL,
+    embed_model TEXT DEFAULT '',
+    api_key_env TEXT NOT NULL,
+    enabled BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Shared cross-AI memory notes (Claude, Antigravity, ChatGPT, Qwen, CodeBuddy, WorkBuddy, etc.)
 CREATE TABLE IF NOT EXISTS notes (
     id SERIAL PRIMARY KEY,
     project_slug TEXT NOT NULL REFERENCES projects(slug) ON DELETE CASCADE,
@@ -53,7 +64,7 @@ CREATE TABLE IF NOT EXISTS papers (
 CREATE INDEX IF NOT EXISTS idx_papers_project ON papers(project_slug, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_papers_doi ON papers(doi);
 
--- Document chunks + vector embeddings (default 768 dims for nomic-embed-text)
+-- Document chunks + vector embeddings (default 768 dims)
 CREATE TABLE IF NOT EXISTS chunks (
     id SERIAL PRIMARY KEY,
     paper_id INT NOT NULL REFERENCES papers(id) ON DELETE CASCADE,
@@ -67,7 +78,7 @@ CREATE TABLE IF NOT EXISTS chunks (
 CREATE INDEX IF NOT EXISTS idx_chunks_project ON chunks(project_slug);
 CREATE INDEX IF NOT EXISTS idx_chunks_embedding ON chunks USING hnsw (embedding vector_cosine_ops);
 
--- Dataset Registry across Kaggle, Office PC (Win 11), Mac mini M4, and Oracle Cloud
+-- Dataset Registry across Kaggle, Office PC (Win 11), and Oracle Cloud
 CREATE TABLE IF NOT EXISTS datasets (
     id SERIAL PRIMARY KEY,
     slug TEXT UNIQUE NOT NULL,
@@ -86,7 +97,7 @@ CREATE TABLE IF NOT EXISTS datasets (
 
 CREATE INDEX IF NOT EXISTS idx_datasets_project ON datasets(project_slug, location);
 
--- Registered compute nodes (mac, pc, kaggle)
+-- Registered compute nodes (pc, kaggle)
 CREATE TABLE IF NOT EXISTS nodes (
     name TEXT PRIMARY KEY,
     kind TEXT NOT NULL,
@@ -118,10 +129,22 @@ CREATE TABLE IF NOT EXISTS experiments (
 CREATE INDEX IF NOT EXISTS idx_experiments_project ON experiments(project_slug, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_experiments_queue ON experiments(target_node, status, created_at ASC);
 
--- Seed initial research projects across categories
+-- Seed initial research projects
 INSERT INTO projects (slug, name, category, status, description, tags)
 VALUES
     ('general', 'General Workspace', 'research', 'active', 'Default shared workspace across all AI clients', ARRAY['general']),
     ('eye_movement', 'Eye Movement Classification', 'research', 'active', 'Eye movement classification using GazeCom, CNN, Multi-Head Attention, and TimesNet', ARRAY['gazecom', 'cnn', 'attention', 'deep-learning']),
     ('network_security', 'Network Intrusion Detection', 'ml', 'active', 'Deep learning and machine learning models for network intrusion detection systems (IDS)', ARRAY['ids', 'cybersecurity', 'ml'])
 ON CONFLICT (slug) DO NOTHING;
+
+-- Seed popular OpenAI-compatible LLM providers (activate any by setting its API key in .env)
+INSERT INTO llm_providers (name, base_url, default_model, embed_model, api_key_env)
+VALUES
+    ('qwen', 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1', 'qwen-plus', 'text-embedding-v3', 'QWEN_API_KEY'),
+    ('deepseek', 'https://api.deepseek.com/v1', 'deepseek-chat', '', 'DEEPSEEK_API_KEY'),
+    ('baidu', 'https://qianfan.baidubce.com/v2', 'ernie-4.0-8k', 'embedding-v1', 'BAIDU_API_KEY'),
+    ('weixin', 'https://api.hunyuan.cloud.tencent.com/v1', 'hunyuan-pro', 'hunyuan-embedding', 'WEIXIN_API_KEY'),
+    ('gemini', 'https://generativelanguage.googleapis.com/v1beta/openai', 'gemini-2.5-flash', 'text-embedding-004', 'GEMINI_API_KEY'),
+    ('openai', 'https://api.openai.com/v1', 'gpt-4o-mini', 'text-embedding-3-small', 'OPENAI_API_KEY'),
+    ('openrouter', 'https://openrouter.ai/api/v1', 'qwen/qwen-2.5-72b-instruct', '', 'OPENROUTER_API_KEY')
+ON CONFLICT (name) DO NOTHING;

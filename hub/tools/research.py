@@ -1,4 +1,4 @@
-"""Research MCP tools: paper search, DOI lookup, PDF ingestion, and cross-project RAG search."""
+"""Research & Document Management MCP tools: paper search, DOI lookup, PDF ingestion, lifecycle, and RAG."""
 
 from __future__ import annotations
 
@@ -6,12 +6,13 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
+from hub.db import db
 from hub.services import papers as paper_svc
 from hub.services import rag as rag_svc
 
 
 def register(mcp: FastMCP) -> None:
-    """Attach research tools to the unified FastMCP server."""
+    """Attach research and document management tools to the unified FastMCP server."""
 
     @mcp.tool()
     async def search_papers(query: str, limit: int = 5, source: str = "all") -> dict[str, Any]:
@@ -36,7 +37,7 @@ def register(mcp: FastMCP) -> None:
         key_metrics: str = "",
         limitations: str = "",
     ) -> dict[str, Any]:
-        """Store a PDF, extract chunks & embeddings on Mac mini M4, and record Literature Review Matrix fields."""
+        """Store a PDF, extract chunks & embeddings on Oracle Cloud, and record Literature Review Matrix fields."""
         return await rag_svc.ingest_pdf(
             project=project,
             title=title,
@@ -51,20 +52,33 @@ def register(mcp: FastMCP) -> None:
         )
 
     @mcp.tool()
+    async def list_papers(project: str = "all", limit: int = 30) -> dict[str, Any]:
+        """List ingested documents/papers in a project (or 'all' across all projects)."""
+        items = await db.list_papers(project_slug=project, limit=limit)
+        return {"project": project, "count": len(items), "papers": items}
+
+    @mcp.tool()
+    async def get_paper(paper_id: int) -> dict[str, Any]:
+        """Get full details, summary, review matrix fields, and storage key for an ingested document."""
+        item = await db.get_paper(paper_id)
+        if not item:
+            return {"error": f"Paper ID {paper_id} not found."}
+        return item
+
+    @mcp.tool()
+    async def delete_paper(paper_id: int) -> dict[str, Any]:
+        """Delete an ingested document and its vector chunks from the database."""
+        ok = await db.delete_paper(paper_id)
+        return {"deleted": ok, "paper_id": paper_id}
+
+    @mcp.tool()
     async def search_kb(
         query: str,
         project: str = "all",
         category: str = "",
         top_k: int = 5,
     ) -> dict[str, Any]:
-        """Semantic RAG search over ingested PDFs.
-
-        Args:
-            query: Question or search phrase.
-            project: Specific project slug (e.g. 'eye_movement') or 'all' to search across all projects.
-            category: Optional project category filter ('research', 'ml', 'software', 'teaching').
-            top_k: Number of top excerpts to return (1-15).
-        """
+        """Semantic RAG search over ingested PDFs (within one project, by category, or 'all')."""
         return await rag_svc.search_kb(
             project=project,
             query=query,

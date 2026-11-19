@@ -33,12 +33,24 @@ class Settings(BaseSettings):
     s3_access_key: str = ""
     s3_secret_key: str = ""
 
-    # Cloud AI & Embedding API (OpenAI-compatible: Gemini, OpenAI, Qwen/DashScope, DeepSeek, OpenRouter)
+    # Multi-LLM Router settings (Qwen, DeepSeek, Baidu, Weixin/Hunyuan, Gemini, OpenAI, OpenRouter)
+    default_provider: str = "qwen"
+    embed_provider: str = "qwen"
+    ai_timeout: int = 90
+
+    qwen_api_key: str = ""
+    deepseek_api_key: str = ""
+    baidu_api_key: str = ""
+    weixin_api_key: str = ""
+    gemini_api_key: str = ""
+    openai_api_key: str = ""
+    openrouter_api_key: str = ""
+
+    # Generic fallback provider
     ai_base_url: str = "https://api.openai.com/v1"
     ai_api_key: str = ""
     ai_model: str = "gpt-4o-mini"
     embed_model: str = "text-embedding-3-small"
-    ai_timeout: int = 90
 
     # Research APIs
     semantic_scholar_key: str = ""

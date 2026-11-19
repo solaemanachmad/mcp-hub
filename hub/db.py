@@ -236,7 +236,7 @@ class Database:
         rows = await pool.fetch(
             """
             SELECT id, project_slug, title, authors, year, doi, url, summary,
-                   method, dataset_used, key_metrics, limitations, created_at
+                   method, dataset_used, key_metrics, limitations, storage_key, created_at
             FROM papers
             WHERE ($1 = 'all' OR project_slug = $1)
             ORDER BY year DESC NULLS LAST, id DESC
@@ -244,6 +244,65 @@ class Database:
             """,
             project_slug,
             limit,
+        )
+        return [dict(r) for r in rows]
+
+    async def get_paper(self, paper_id: int) -> dict[str, Any] | None:
+        pool = self._require_pool()
+        row = await pool.fetchrow(
+            """
+            SELECT id, project_slug, title, authors, year, doi, url, abstract, summary,
+                   method, dataset_used, key_metrics, limitations, storage_key, created_at
+            FROM papers
+            WHERE id = $1
+            """,
+            paper_id,
+        )
+        return dict(row) if row else None
+
+    async def delete_paper(self, paper_id: int) -> bool:
+        pool = self._require_pool()
+        res = await pool.execute("DELETE FROM papers WHERE id = $1", paper_id)
+        return res.endswith("1")
+
+    # ------------------------------------------------------------------
+    # Dynamic Multi-LLM Providers
+    # ------------------------------------------------------------------
+
+    async def upsert_llm_provider(
+        self,
+        name: str,
+        base_url: str,
+        default_model: str,
+        api_key_env: str,
+        embed_model: str = "",
+    ) -> dict[str, Any]:
+        pool = self._require_pool()
+        clean = name.strip().lower()
+        row = await pool.fetchrow(
+            """
+            INSERT INTO llm_providers (name, base_url, default_model, embed_model, api_key_env, enabled)
+            VALUES ($1, $2, $3, $4, $5, TRUE)
+            ON CONFLICT (name) DO UPDATE
+            SET base_url = EXCLUDED.base_url,
+                default_model = EXCLUDED.default_model,
+                embed_model = EXCLUDED.embed_model,
+                api_key_env = EXCLUDED.api_key_env,
+                enabled = TRUE
+            RETURNING name, base_url, default_model, embed_model, api_key_env, enabled
+            """,
+            clean,
+            base_url.rstrip("/"),
+            default_model,
+            embed_model,
+            api_key_env.strip().upper(),
+        )
+        return dict(row)
+
+    async def list_llm_providers(self) -> list[dict[str, Any]]:
+        pool = self._require_pool()
+        rows = await pool.fetch(
+            "SELECT name, base_url, default_model, embed_model, api_key_env, enabled FROM llm_providers ORDER BY name"
         )
         return [dict(r) for r in rows]
 

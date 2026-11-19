@@ -10,6 +10,7 @@ from fastapi.responses import HTMLResponse
 
 from hub.db import db
 from hub.server import LOADED_PLUGINS
+from hub.services.ai import ai_client
 
 router = APIRouter(tags=["dashboard"])
 
@@ -20,13 +21,23 @@ def _esc(val: Any) -> str:
 
 @router.get("/dashboard", response_class=HTMLResponse)
 async def render_dashboard() -> HTMLResponse:
-    """Render a single-page read-only overview of nodes, projects, datasets, experiments, and notes."""
+    """Render a single-page read-only overview of nodes, LLMs, projects, datasets, experiments, and notes."""
     projects = await db.list_projects()
     nodes = await db.list_nodes()
     datasets = await db.list_datasets()
     exps = await db.list_experiments("all", limit=15)
     papers = await db.list_papers("all", limit=10)
+    provs = await ai_client.get_providers()
     plugins = LOADED_PLUGINS
+
+    llm_rows = "".join(
+        f"<tr><td><b>{_esc(name)}</b></td><td><code>{_esc(p['default_model'])}</code></td>"
+        f"<td><code>{_esc(p.get('embed_model') or '-')}</code></td>"
+        f"<td><code>{_esc(p['api_key_env'])}</code></td>"
+        f"<td><span class='badge {'online' if p.get('has_key') else 'offline'}'>"
+        f"{'active' if p.get('has_key') else 'no key'}</span></td></tr>"
+        for name, p in provs.items()
+    )
 
     node_rows = "".join(
         f"<tr><td><b>{_esc(n['name'])}</b></td><td>{_esc(n['kind'])}</td>"
@@ -103,6 +114,14 @@ async def render_dashboard() -> HTMLResponse:
     <table>
       <thead><tr><th>Node</th><th>Kind</th><th>Status</th><th>Capabilities</th></tr></thead>
       <tbody>{node_rows}</tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Multi-LLM Router (Qwen, DeepSeek, Baidu, Weixin, Gemini, OpenAI)</h2>
+    <table>
+      <thead><tr><th>Provider</th><th>Chat Model</th><th>Embed Model</th><th>Env Key</th><th>Status</th></tr></thead>
+      <tbody>{llm_rows}</tbody>
     </table>
   </div>
 
