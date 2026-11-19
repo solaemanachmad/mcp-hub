@@ -1,0 +1,56 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mcphub}
+      POSTGRES_USER: ${POSTGRES_USER:-mcphub}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-db-password}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mcphub} -d ${POSTGRES_DB:-mcphub}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  hub:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-mcphub}:${POSTGRES_PASSWORD:-change-me-db-password}@db:5432/${POSTGRES_DB:-mcphub}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - files:/data/files
+    ports:
+      - "127.0.0.1:${HUB_PORT:-8000}:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:-:80}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    depends_on:
+      - hub
+
+volumes:
+  pgdata:
+  files:
+  caddydata:
+  caddyconfig:

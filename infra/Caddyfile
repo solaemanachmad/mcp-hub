@@ -1,0 +1,7 @@
+{$DOMAIN::80} {
+    encode gzip
+
+    reverse_proxy hub:8000 {
+        flush_interval -1
+    }
+}
